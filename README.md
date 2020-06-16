@@ -17,7 +17,7 @@ curl localhost:9200/_cluster/setting
 ```
 ### Node stats
 ```
-curl localhost:9200/_node/stats
+curl localhost:9200/_nodes/stats
 ```
 ### Index stats
 ```
