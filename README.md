@@ -236,3 +236,75 @@ curl -X POST -H "Content-Type: application/json" `hostname -i`:9200/chapter1/pro
 ```
 curl -X GET `hostname -i`:9200/chapter1/product/1
 ```
+### Update document
+```json
+curl -X POST -H "Content-Type: application/json" `hostname -i`:9200/chapter1/product/1/_update -d \
+'{
+"doc": {
+    "category": "technical books"
+  }
+}'
+```
+### Delete document
+```
+curl -X DELETE localhost:9200/chapter1/product/1
+```
+### Create document example 2
+```json
+curl -X PUT -H "Content-Type: application/json" http://localhost:9200/chapter2/user/1 -d \
+'{
+   "name": "Luke",
+   "age": "100",
+   "gender": "F",
+   "email": "luke@gmail.com"
+}'
+```
+### Search document created above
+```
+curl -X GET http://127.0.0.1:9200/chapter2/user/_search?q=name:luke
+```
+### Search example 2
+```json
+curl -X POST -H "Content-Type: application/json" http://127.0.0.1:9200/chapter2/user/_search -d \
+'{
+   "query": {
+     "term": {
+       "name": "luke"
+     }
+   }
+ }'
+ ```
+ ### Search all documents
+ ```json
+curl -XGET "http://35.192.23.155:9200/chapter2/_search" -H 'Content-Type: application/json' -d'{  "query": {    "match_all": {}  }}'
+```
+### Create dynamic mapping
+```json
+curl -X PUT localhost:9200/chapter3/person/1 -H "Content-type: application/json" -d \
+'{
+    "name": "john",
+    "age": 200,
+    "date_of_birth": "1970/01/01"
+}'
+```
+### Search above document
+```json
+curl -X GET localhost:9200/chapter3/person/1
+curl -X GET localhost:9200/chapter3/person/_search?q=name:john
+curl -X POST localhost:9200/chapter3/person/_search -H "Content-type: application/json" -d \
+'{
+    "query": {
+      "term": {
+        "name": "john"
+      }
+    }
+}'
+```
+### Get mapping of an index
+```
+curl -X GET localhost:9200/chapter3/_mapping?pretty
+```
+### Delete index
+```
+curl -X DELETE localhost:9200/chapter3
+```
