@@ -153,3 +153,86 @@ curl -s 'localhost:9200/_search'
 ```
 curl -s 'localhost:9200/_cluster/state' 
 ```
+### Pending tasks
+```
+curl -s 'localhost:9200/_cluster/pending_tasks'
+```
+### Synced Flush (Before 7.6)
+```
+curl -XPOST 'localhost:9200/_flush/synced'
+```
+#### After 7.7
+```
+curl -XPOST 'localhost:9200/_flush
+```
+Ref: [https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-synced-flush-api.html](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-synced-flush-api.html)
+
+### View one index
+```
+curl -XGET 'http://127.0.0.1:9200/_cat/indices/<index name>?v'
+```
+### Document count across all indices
+```
+curl -XGET http://elasticsearch:9200/_cat/count?v
+```
+### Shard info per index
+```
+curl -XGET http://elasticsearch:9200/_cat/shards/<index name>?v
+```
+### Recovery
+Info: Returns information about ongoing and completed shard recoveries,
+```
+curl -XGET http://127.0.0.1:9200/_cat/recovery?v
+```
+### Index setting
+```
+curl -XGET 'http://127.0.0.1:9200/<Index name>/_settings?pretty'
+```
+### Number of primary shards per node
+```
+curl -s -XGET 'http://elasticsearch:9200/_cat/shards/<index name>?v' | grep 'p      STARTED' | awk '{print $7}' | sort | uniq -c
+```
+### Close index
+```
+curl -XPOST http://elasticsearch:9200/<Index name>/_close
+```
+
+### Open index
+```
+curl -XPOST http://elasticsearch:9200/<Index name>/_open
+```
+
+### Document
+```
+curl -XGET http://elasticsearch:9200/<Index name>/<id>?pretty
+```
+### Per index stats
+```
+curl "localhost:9200/<Index name>/_stats"
+```
+### Check memory swapiness
+```
+curl `hostname -i`:9200/_nodes?filter_path=**.mlockall
+```
+### Create document
+```json
+curl -X PUT -H "Content-Type: application/json" `hostname -i`:9200/chapter1/product/1 -d \
+'{
+  "title": "Learning Elasticsearch",
+  "author": "Abhishek Andhavarapu",
+  "category": "books"
+}'
+```
+### Create auto identifier for document
+```json
+curl -X POST -H "Content-Type: application/json" `hostname -i`:9200/chapter1/product -d \
+'{
+  "title": "Learning Elasticsearch",
+  "author": "Abhishek Andhavarapu",
+  "category": "books"
+}'
+```
+### Read document
+```
+curl -X GET `hostname -i`:9200/chapter1/product/1
+```
