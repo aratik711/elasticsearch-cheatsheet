@@ -308,3 +308,161 @@ curl -X GET localhost:9200/chapter3/_mapping?pretty
 ```
 curl -X DELETE localhost:9200/chapter3
 ```
+### Create mapping
+```json
+ curl -X PUT "localhost:9200/chapter3" -H 'Content-Type: application/json' -d'
+ {
+   "mappings": {
+     "properties": {
+       "age":    { "type": "integer" },
+       "email":  { "type": "keyword"  },
+       "name":   { "type": "text"  },
+       "gender": { "type": "keyword"  },
+       "id": { "type": "integer" },
+       "last_modified_date": { "type": "date", "format": "yyyy-MM-dd" }
+     }
+   }
+ }'
+ ```
+ ### Insert data
+ ```json
+curl -X POST localhost:9200/chapter3/_doc/1 -H "Content-type: application/json" -d \
+'{
+    "name": "Abc",
+    "age": 100,
+    "email": "abc@xyz.com",
+    "gender": "F",
+    "id": 1,
+    "last_modified_date": "2010-01-01"
+}'
+```
+## Add field
+```json
+ curl -X PUT "localhost:9200/chapter3/_mapping?pretty" -H 'Content-Type: application/json' -d'
+ {
+   "properties": {
+     "address": {
+       "type": "text",
+       "index": true
+     }
+   }
+ }'
+```
+ ## Insert data
+ ```json
+ curl -X POST localhost:9200/chapter3/_doc/2 -H "Content-type: application/json" -d '{
+    "name": "Abc",
+    "age": 100,
+    "email": "abc@xyz.com",
+    "gender": "F",
+    "id": 1,
+    "last_modified_date": "2010-01-01",
+    "address": "Thergaon, Pune"
+}'
+```
+### View mapping for field
+```
+curl -X GET "localhost:9200/chapter3/_mapping/field/id?pretty"
+```
+### search _all fields
+```
+curl -X GET localhost:9200/chapter3/_doc/_search?q=Abc
+```
+### disable _all for search
+```json
+curl -X PUT localhost:9200/chapter3/_mapping -H "Content-type: application/json" -d \
+ '{
+   "_all": {
+"enabled": false
+   },
+   "properties": {
+     "buyer": {
+       "type": "keyword"
+     },
+     "seller": {
+       "type": "keyword"
+     },
+     "item_title": {
+       "type": "text"
+     }
+   }
+ }'
+ ```
+ ### Disable field in _all search
+ ```json
+ curl -X PUT localhost:9200/chapter3/_mapping -H "Content-type: application/json" -d \
+ '{
+   "properties": {
+     "buyer": {
+       "type": "keyword",
+		"include_in_all": false
+     },
+     "seller": {
+       "type": "keyword",
+       "include_in_all": false
+     },
+     "item_title": {
+       "type": "text"
+     }
+   }
+ }'
+ ```
+ ### Analyze
+ ```json
+ curl -X PUT localhost:9200/weather/_doc/1 -H "Content-type: application/json" -d \
+ '{
+   "date": "2017/02/01",
+   "desc": "It will be raining in yosemite this weekend"
+ }'
+
+ curl -X GET "localhost:9200/_analyze?pretty" -H 'Content-Type: application/json' -d'
+ {
+   "analyzer" : "standard",
+   "text" : "It will be raining in yosemite this weekend"
+ }
+ '
+ curl -X GET "localhost:9200/_analyze?pretty" -H 'Content-Type: application/json' -d'
+ {
+   "explain" : true,
+   "analyzer" : "standard",
+   "text" : ["raining", "in", "yosemite"]
+ }
+ '
+
+ curl -X GET "localhost:9200/_analyze?pretty" -H 'Content-Type: application/json' -d'
+ {
+   "explain" : true,
+   "analyzer" : "standard",
+   "text" : ["rain"]
+ }'
+ ```
+### create empty index
+```
+curl -X PUT "localhost:9200/chapter4" -H 'Content-Type: application/json' -d'{ "settings" : { "index" : { } }}'
+```
+### Routing
+```json
+curl -X PUT localhost:9200/chapter4/_doc/1?routing=user1 -H "Content-type: application/json" -d \
+ '{
+   "order_id": "23y86",
+   "user_id": "user1",
+   "order_total": 15
+ }'
+
+ curl -X GET localhost:9200/chapter4/1?routing=user1
+```
+Ref: [https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-routing-field.html](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-routing-field.html)
+
+### op_type (operation)
+```json
+curl -X PUT localhost:9200/chapter4/_doc/1?op_type=create -H 'Content-type: application/json' -d \
+'{
+  "id": 1,
+  "name": "user1",
+  "age": "55",
+  "gender": "M",
+  "email": "user1@gmail.com",
+  "last_modified_date": "2017-02-15"
+}'
+```
+Ref: [https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html)
