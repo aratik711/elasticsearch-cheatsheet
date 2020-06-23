@@ -452,7 +452,6 @@ curl -X PUT localhost:9200/chapter4/_doc/1?routing=user1 -H "Content-type: appli
  curl -X GET localhost:9200/chapter4/1?routing=user1
 ```
 Ref: [https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-routing-field.html](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-routing-field.html)
-
 ### op_type (operation)
 ```json
 curl -X PUT localhost:9200/chapter4/_doc/1?op_type=create -H 'Content-type: application/json' -d \
@@ -466,3 +465,55 @@ curl -X PUT localhost:9200/chapter4/_doc/1?op_type=create -H 'Content-type: appl
 }'
 ```
 Ref: [https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html)
+### Search document immediately after insert
+```json
+curl -X PUT localhost:9200/chapter5/_doc/3?refresh=true -H 'Content-type: application/json' -d \
+'{
+  "id": 3,
+  "name": "User3",
+  "age": 55,
+  "gender": "M",
+  "email": "user3@gmail.com",
+  "last_modified_date": "2017-02-15"
+}'
+```
+### refresh index
+```
+curl -X POST localhost:9200/chapter4/_refresh
+```
+### refresh all indices
+```
+curl -X POST localhost:9200/_refresh
+```
+### change refresh interval
+```json
+curl -X PUT localhost:9200/chapter4/_settings -H 'Content-type: application/json' -d \
+'{
+  "index": {
+"refresh_interval": "30s"
+  }
+}'
+```
+### only update 1 field
+```json
+curl -X POST localhost:9200/chapter5/_doc/2/_update -H 'Content-type: application/json' -d \
+'{
+  "doc": {
+    "name": "name udpate 2"
+  }
+}'
+```
+### inline script
+```json
+ curl -X POST "localhost:9200/chapter5/_update/2?pretty" -H 'Content-Type: application/json' -d'
+{
+  "script": {
+    "lang": "painless",
+    "source": "ctx._source.last = \"abc\";\nctx._source.nick = \"pqr\"",
+    "params": {
+      "last": "gaudreau",
+      "nick": "hockey"
+    }
+  }
+}'
+```
