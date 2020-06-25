@@ -517,3 +517,337 @@ curl -X POST localhost:9200/chapter5/_doc/2/_update -H 'Content-type: applicatio
   }
 }'
 ```
+### upsert
+```json
+curl -X POST localhost:9200/chapter5/_doc/4/_update -H 'Content-Type: application/json' -d'
+{
+  "doc": {
+    "name": "user3"
+  },
+  "doc_as_upsert": true
+}'
+```
+### always update document
+```json
+curl -X POST localhost:9200/chapter5/_doc/2/_update -H 'Content-Type: application/json' -d'
+{
+  "doc" : {
+     "name" : "user2 new"
+  },
+  "detect_noop" : "false"
+}'
+```
+### Update specific version of a document
+```json
+curl -X PUT 'localhost:9200/chapter5/_doc/2?if_seq_no=9&if_primary_term=1' -H 'Content-Type: application/json' -d'
+{
+ "id": 2,
+ "name": "name update 1",
+ "age": "55",
+ "gender": "M",
+ "email": "user2@gmail.com",
+ "last_modified_date" : "2017-02-18"
+}'
+```
+### Retry
+```json
+curl -X POST localhost:9200/chapter5/_doc/2/_update?retry_on_conflict=3 -H 'Content-Type: application/json' -d'
+{
+  "doc": {
+    "name": "name update 2"
+  }
+}'
+```
+Ref: [https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html)
+### Search local
+```json
+curl -X POST localhost:9200/chapter5/_doc/_search?preference=_local -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "match": {
+      "name": "name update 1"
+    }
+  }
+}'
+```
+Ref: [https://www.elastic.co/guide/en/elasticsearch/reference/6.8/search-request-preference.html](https://www.elastic.co/guide/en/elasticsearch/reference/6.8/search-request-preference.html)
+### Bulk operations
+```json
+curl -X POST "localhost:9200/_bulk?pretty" -H 'Content-Type: application/json' -d'
+{ "index" : { "_index" : "test", "_id" : "1" } }
+{ "field1" : "value1" }
+{ "delete" : { "_index" : "test", "_id" : "2" } }
+{ "create" : { "_index" : "test", "_id" : "3" } }
+{ "field1" : "value3" }
+{ "update" : {"_id" : "1", "_index" : "test"} }
+{ "doc" : {"field2" : "value2"} }'
+```
+### Multiget
+```json
+curl -X POST localhost:9200/test/_mget -H 'Content-Type: application/json' -d'
+{
+"ids" : ["2", "3"]
+}'
+
+curl -X POST localhost:9200/_mget -H 'Content-Type: application/json' -d'
+{
+   "docs": [
+     {
+       "_index": "test",
+       "_id": "1",
+       "_source": [
+       "field1"
+       ]
+     },
+     {
+       "_index": "test",
+       "_id": "3",
+       "_source": {
+       "exclude": "field1"
+       }
+     }
+   ]
+ }'
+```
+### Inline update
+```json
+ curl -X POST localhost:9200/store/_update_by_query -H 'Content-Type: application/json' -d'
+ {
+   "script": {
+"inline": "ctx._source.price_with_tax = ctx._source.unit_price * 1.1",
+     "lang": "painless"
+   },
+   "query": {
+     "match_all": {}
+   }
+ }'
+```
+### Bulk
+```json
+curl -X POST localhost:9200/_bulk -H 'Content-Type: application/json' -d'
+{"index": {"_index": "store", "_id": 1}}
+{"item": "toothpaste", "unit_price": 7.5}
+{"create": {"_index": "store", "_id": 2}}
+{"item": "soap", "unit_price": 10}'
+```
+### Inline
+```json
+curl -X POST localhost:9200/store/_update_by_query?wait_for_completion=false -H 'Content-Type: application/json' -d'
+ {
+   "script": {
+     "inline": "ctx._source.price_with_tax = ctx._source.unit_price * 1.1",
+     "lang": "painless"
+   },
+   "query": {
+     "match_all": {}
+   }
+ }'
+```
+### Check tasks
+curl -X GET localhost:9200/_tasks/xZjyFE19Q0yGxehcys6ydg:307842
+
+### Cancel task
+curl -XPOST localhost:9200/_tasks/xZjyFE19Q0yGxehcys6ydg:307842/_cancel
+### Delete
+```json
+curl -X POST localhost:9200/store/_delete_by_query?conflicts=proceed  -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "match": {
+       "item": "soap"
+     }
+   }
+ }'
+```
+ ### Reindex
+ ```json
+curl -X POST localhost:9200/_reindex -H 'Content-Type: application/json' -d'
+ {
+"source": {
+     "index": "store"
+   },
+"dest": {
+     "index": "storenew"
+   }
+ }'
+```
+### Combining documents from more than one index
+```json
+curl -XPOST localhost:9200/_reindex -H 'Content-Type: application/json' -d'
+ {
+"source": {
+     "index": [
+       "source_index_1",
+       "source_index_2"
+     ]
+   },
+"dest": {
+     "index": "dest_index"
+   }
+ }'
+```
+### Copy only missing document to new index
+```json
+curl -XPOST localhost:9200/_reindex -H 'Content-Type: application/json' -d'
+ {
+"conflicts": "proceed",
+   "source": {
+     "index": "source_index"
+   },
+   "dest": {
+     "index": "dest_index",
+	 "op_type": "create"
+   }
+ }'
+```
+### Copy subset of documents to new index
+```json
+curl -XPOST localhost:9200/_reindex -H 'Content-Type: application/json' -d'
+ {
+   "source": {
+     "index": "source_index_1",
+     "type": "log",
+"query": {
+       "term": {
+         "level": "ERROR"
+       }
+     }
+   },
+   "dest": {
+     "index": "dest_index"
+   }
+ }'
+```
+### Copy top n docs to new index
+```json
+curl -XPOST localhost:9200/_reindex -H 'Content-Type: application/json' -d'
+ {
+"size": 1000,
+   "source": {
+     "index": "source_index",
+"sort": {
+       "timestamp": "desc"
+     }
+   },
+   "dest": {
+     "index": "dest_index"
+   }
+ }'
+```
+### Copying subset of fields to new index
+```json
+curl -XPOST localhost:9200/_reindex -H 'Content-Type: application/json' -d'
+ {
+   "source": {
+     "index": [
+       "source_index_1"
+     ],
+"_source": [
+       "field1",
+       "field2"
+     ]
+   },
+   "dest": {
+     "index": "dest_index"
+   }
+ }
+```
+### Simulate pipeline
+```json
+curl -X POST localhost:9200/_ingest/pipeline/_simulate?pretty -H 'Content-Type: application/json' -d'
+ {
+   "pipeline": {
+     "description": "Item View Pipeline",
+     "processors": [
+       {
+         "grok": {
+           "field": "log",
+           "patterns": [
+             "%{IP:client} %{TIMESTAMP_ISO8601:timestamp} %{WORD:country} %{NUMBER:itemId} %{WORD:platform}"
+           ]
+         }
+       },
+       {
+         "remove": {
+           "field": "log"
+         }
+       },
+       {
+         "date_index_name": {
+           "field": "timestamp",
+           "index_name_prefix": "viewitem-",
+           "date_rounding": "M",
+           "index_name_format": "yyyy-MM",
+           "date_formats" : [
+          "ISO8601"
+          ]
+         }
+       }
+     ]
+   },
+   "docs": [
+     {
+       "_source": {
+         "log": "127.0.0.1 2017-04-11T09:02:34.234+07:00 USA 1 Web"
+       }
+     }
+   ]
+ }'
+```
+### Ingest pipeline
+```json
+curl -X PUT localhost:9200/_ingest/pipeline/view_item_pipeline?pretty -H 'Content-Type: application/json' -d'
+ {
+   "description": "Item View Pipeline",
+   "processors": [
+     {
+       "grok": {
+         "field": "log",
+         "patterns": [
+           "%{IP:client} %{TIMESTAMP_ISO8601:timestamp} %{WORD:country} %{NUMBER:itemId} %{WORD:platform}"
+         ]
+       }
+     },
+     {
+       "remove": {
+         "field": "log"
+       }
+     },
+     {
+       "date_index_name": {
+         "field": "timestamp",
+         "index_name_prefix": "viewitem_",
+         "date_rounding": "M",
+         "index_name_format": "yyyy_MM",
+         "date_formats" : [
+        "ISO8601"
+        ]
+       }
+     }
+   ]
+ }'
+```
+### Test ingest pipeline
+```json
+curl -X POST localhost:9200/chapter6/log/?pipeline=view_item_pipeline -H 'Content-Type: application/json' -d'
+  {
+    "log": "127.0.0.1 2017-04-11T09:02:34.234+07:00 USA 1 Web "
+  }'
+
+curl -X  POST localhost:9200/chapter6/log/?pipeline=view_item_pipeline -H 'Content-Type: application/json' -d'
+  {
+    "log": "127.0.0.1 2017-04-12T09:02:34.234+07:00 USA 2 Web "
+  }'
+
+
+curl -X  POST localhost:9200/chapter6/log/?pipeline=view_item_pipeline -H 'Content-Type: application/json' -d'
+  {
+    "log": "127.0.0.1 2017-04-13T09:02:34.234+07:00 USA 3 Web "
+  }'
+
+
+curl -X  POST localhost:9200/chapter6/log/?pipeline=view_item_pipeline -H 'Content-Type: application/json' -d'
+  {
+    "log": "127.0.0.1 2017-04-11T09:02:34.234+07:00 USA 1 Web "
+  }'
+```
