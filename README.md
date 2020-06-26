@@ -851,3 +851,1099 @@ curl -X  POST localhost:9200/chapter6/log/?pipeline=view_item_pipeline -H 'Conte
     "log": "127.0.0.1 2017-04-11T09:02:34.234+07:00 USA 1 Web "
   }'
 ```
+### Search ingested documents
+```json
+curl -X GET localhost:9200/viewitem_2017_04/log/PshOMHIBXvUN7LXWwdsn
+
+curl -X POST localhost:9200/viewitem_2017_04/_search -H 'Content-Type: application/json' -d'
+{
+  "size": 0,
+  "aggs": {
+    "most_views_items": {
+      "terms": {
+	  "field": "itemId.keyword",
+	  "size": 5
+      }
+    }
+  }
+}'
+```
+### Create alias
+```json
+curl -X PUT localhost:9200/index_with_date_as_string/_alias/application_logs
+```
+### Rename Alias
+```json
+curl -X POST localhost:9200/_aliases -H 'Content-Type: application/json' -d'
+ {
+   "actions": [
+     {
+ "remove": {
+         "index": "index_with_date_as_string",
+         "alias": "application_logs"
+       }
+     },
+     {
+"add": {
+         "index": "index_with_date_as_date",
+         "alias": "application_logs"
+       }
+     }
+   ]
+ }'
+```
+### get list of alias
+```
+ curl -X GET localhost:9200/*/_alias/application_logs
+```
+### Alias Example
+```json
+curl -X POST localhost:9200/logs_04_17/log/ -H 'Content-Type: application/json' -d'
+ {
+   "level": "ERROR",
+   "application": "Service A",
+   "timestamp" : "2017-04-13T16:39:00-07:00",
+   "message": "Exception in thread java.lang.NullPointerException at chapter5.main(ServiceA.java:23)"
+ }'
+ curl -X POST localhost:9200/_aliases -H 'Content-Type: application/json' -d'
+ {
+   "actions": [
+     {
+       "add": {
+         "index": "logs_04_17",
+         "alias": "logs_latest_error",
+         "filter": {
+           "match": {
+             "level": "ERROR"
+           }
+         }
+       }
+     }
+   ]
+ }'
+ 
+curl -X GET localhost:9200/logs_latest_error/_search
+curl -X POST localhost:9200/logs_latest_error/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "bool": {
+       "must": [
+         {
+           "match": {
+           "application": "Service A"
+           }
+         },
+         {
+           "range": {
+             "timestamp": {
+             "gte": "now-1h",
+               "time_zone": "-07:00"
+             }
+           }
+         }
+       ]
+     }
+   }
+ }'
+```
+### Pipeline with alias example
+```json
+curl -X PUT localhost:9200/_template/logs_template -H 'Content-Type: application/json' -d'
+ {
+   "template": "logs*",
+   "order": 1,
+   "settings": {
+     "number_of_shards": 3
+   },
+"aliases": {
+     "logs_last_2_months": {}
+   },
+   "mappings": {
+     "log": {
+       "properties": {
+         "level": {
+           "type": "keyword"
+         },
+         "application": {
+           "type": "keyword"
+         },
+         "timestamp": {
+           "type": "date",
+           "format": "date_optional_time"
+         },
+         "message": {
+           "type": "text"
+         }
+       }
+     }
+   }
+ }'
+
+curl -X PUT localhost:9200/_ingest/pipeline/new_pipeline?pretty -H 'Content-Type: application/json' -d'
+ {
+     "description": "Item View Pipeline",
+     "processors": [
+     {
+       "grok": {
+         "field": "log",
+         "patterns": [
+           "%{IP:client} %{TIMESTAMP_ISO8601:timestamp} %{WORD:country} %{NUMBER:itemId} %{WORD:platform}"
+         ]
+       }
+     },
+       {
+         "date_index_name": {
+           "field": "timestamp",
+           "index_name_prefix": "log_",
+           "date_rounding": "d",
+           "index_name_format": "yyyy_MM_dd",
+           "date_formats" : [
+          "ISO8601"
+          ]
+         }
+       }
+     ]
+ }'
+
+ curl -X PUT localhost:9200/_template/logs_template -H 'Content-Type: application/json' -d'
+ {
+   "template": "log*",
+"aliases": {
+     "logs_last_3_days": {}
+   }
+}'
+
+curl -X POST localhost:9200/_aliases -H 'Content-Type: application/json' -d'
+ {
+   "actions": [
+     {
+"remove": {
+         "index": "log_2017_04_14",
+         "alias": "logs_last_3_days"
+       }
+     }
+   ]
+ }'
+
+ curl -X  POST localhost:9200/chapter6/log/?pipeline=new_pipeline -H 'Content-Type: application/json' -d'
+   {
+     "log": "127.0.0.1 2017-04-20T09:02:34.234+07:00 USA 1 Web "
+   }'
+   curl -X  POST localhost:9200/chapter6/log/?pipeline=new_pipeline -H 'Content-Type: application/json' -d'
+     {
+       "log": "127.0.0.1 2017-04-14T09:02:34.234+07:00 USA 1 Web "
+     }'
+```
+### Mapping
+```json
+  curl -X PUT localhost:9200/chapter6 -H 'Content-Type: application/json' -d'
+  {
+    "settings": {},
+    "mappings": {
+        "properties": {
+          "product_name": {
+            "type": "text",
+ "analyzer": "english"
+          },
+          "description" : {
+            "type": "text",
+ "analyzer": "english"
+          }
+        }
+    }
+  }'
+```
+### Index Documents
+```json
+curl -X PUT localhost:9200/chapter6/_doc/1 -H 'Content-Type: application/json' -d'
+{
+  "product_name": "Mens High Performance Fleece Jacket",
+  "description": "Best Value. All season fleece jacket",
+  "unit_price": 79.99,
+  "reviews": 250,
+  "release_date": "2016-08-16"
+}'
+
+curl -X PUT localhost:9200/chapter6/_doc/2 -H 'Content-Type: application/json' -d'
+{
+  "product_name": "Men'\''s Water Resistant Jacket",
+  "description": "Provides comfort during biking and hiking",
+  "unit_price": 69.99,
+  "reviews": 5,
+  "release_date": "2017-03-02"
+}'
+
+curl -X PUT localhost:9200/chapter6/_doc/3 -H 'Content-Type: application/json' -d'
+{
+  "product_name": "Women'\''s wool Jacket",
+  "description": "Helps you stay warm in winter",
+  "unit_price": 59.99,
+  "reviews": 10,
+  "release_date": "2016-12-15"
+}'
+
+
+curl -X PUT localhost:9200/chapter6/_doc/4 -H 'Content-Type: application/json' -d'
+{
+  "product_name": "Women'\''s wool Jacket",
+  "description": "Helps you stay warm in winter",
+  "unit_price": 59.99,
+  "reviews": 100,
+  "release_date": "2016-12-15"
+}'
+
+curl -X PUT localhost:9200/chapter6/_doc/5 -H 'Content-Type: application/json' -d'
+{
+  "product_name": "Men'\''s Water Resistant Jacket",
+  "description": "Provides comfort during biking and hiking",
+  "unit_price": 69.99,
+  "reviews": 5,
+  "release_date": "2017-05-02"
+}'
+
+curl -X PUT localhost:9200/chapter6/_doc/6 -H 'Content-Type: application/json' -d'
+{
+  "product_name": "Men'\''s Water Resistant Jacket",
+  "description": "Provides comfort during biking and hiking",
+  "unit_price": 59.99,
+  "reviews": 5,
+  "release_date": "2017-05-02"
+}'
+
+curl -X PUT localhost:9200/chapter6/_doc/7 -H 'Content-Type: application/json' -d'
+{
+  "product_name": "Men'\''s Water Resistant Jacket",
+  "description": "Provides comfort during biking and hiking jacket",
+  "unit_price": 59.99,
+  "reviews": 5,
+  "release_date": "2017-05-02"
+}'
+
+curl -X PUT localhost:9200/chapter6/_doc/8 -H 'Content-Type: application/json' -d'
+{
+  "product_name": " Jacket Women'\''s wool Jacket",
+  "description": "Helps you stay warm in winter",
+  "unit_price": 59.99,
+  "reviews": 100,
+  "release_date": "2016-12-15"
+}'
+```
+### Search examples
+```json
+curl -X GET localhost:9200/chapter6/_search?q=product_name:jacket
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+   "query": {
+     "term": {
+"product_name" : "jacket"
+     }
+   }
+ }'
+```
+### Search option description
+```json
+{
+   "size" : //The number of results in the response. Defaults to 10.
+
+   "from" : // The offset of the results. For example, to get the third page for a page size of 20; you should set the size to 20 and from to 40.
+
+   "timeout" : // A timeout can be specified after which the partial results are sent back in the response. By default there is no timeout. If the request times out, the timed_out value in the response will be indicated as true.
+
+   "_source" : //To select the fields, that should be included in the response. For example : "_source" : ["product_name", "description"].
+
+   "query" : {
+      // Query
+   }
+
+   "aggs" : {
+      // Aggregations
+   }
+
+   "sort" : {
+      // How to sort the results
+    }
+ }
+```
+### Search with various options
+```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+   "query": {
+"terms": {
+       "product_name" : ["jacket","fleece"]
+     }
+   }
+ }'
+
+
+ #Pagination
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+"from" : 0,
+  "size" : 2,
+  "query" : {
+    "match" : {
+      "product_name" : "wool jacket"
+    }
+  }
+}'
+
+
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "match": {
+       "product_name": "jacket"
+     }
+   },
+   "sort": [
+ {
+       "unit_price": {
+         "order": "desc"
+       }
+     },
+     {
+       "reviews": {
+         "order": "desc"
+       }
+     }
+   ]
+ }'
+
+
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+"_source": [ "product_name" ],
+   "query": {
+     "term": {
+       "product_name": "jacket"
+     }
+   }
+ }'
+
+
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+  {
+    "_source": [
+ "pr*"
+    ],
+    "query": {
+      "term": {
+        "product_name": "jacket"
+      }
+    }
+  }'
+
+  curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+   "_source": [],
+   "query": {
+     "match_all": {}
+   },
+   "script_fields": {
+"price_including_tax": {
+       "script": {
+ "inline" : "params['\''_source'\'']['\''unit_price'\''] * 1.1"
+       }
+     }
+   }
+ }'
+
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+   "query": {
+     "range": {
+"unit_price": {
+         "gt": 70,
+         "lte": 100
+       }
+     }
+   }
+ }'
+
+
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+   "query": {
+     "range": {
+"release_date": {
+         "gt": "2016-01-01",
+         "lte": "2017-01-01"
+       }
+     }
+   }
+ }'
+
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "range": {
+       "release_date": {
+"gt": "now-1h"
+       }
+     }
+   }
+ }'
+
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+    "query": {
+      "range": {
+        "release_date": {
+ "gt": "2017-01-11T20:00:00||+1M"
+        }
+      }
+    }
+  }'
+```
+### Analyzer example
+```json
+curl -X PUT localhost:9200/chapter7 -H 'Content-Type: application/json' -d'
+   {
+   "settings": {},
+   "mappings": {
+     "properties": {
+   "product_id": {
+         "type": "integer"
+       },
+   "product_name": {
+         "type": "text",
+		 "analyzer": "english",
+         "fields": {
+           "keyword": {
+		      "type": "keyword"
+           }
+         }
+       }
+     }
+     }
+   }'
+
+
+   curl -X PUT localhost:9200/chapter7/_doc/1 -H 'Content-Type: application/json' -d'
+   {
+      "product_id": "1",
+      "product_name": "Red Gala Apple"
+    }'
+
+    curl -X GET "localhost:9200/_analyze?pretty" -H 'Content-Type: application/json' -d'
+    {
+      "analyzer" : "english",
+      "text" : ["Red", "Gala", "Apple"]
+    }
+    '
+
+  curl -X POST localhost:9200/chapter7/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "term": {
+"product_name": "appl"
+     }
+   }
+ }'
+
+ curl -X POST localhost:9200/chapter7/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "term": {
+"product_name.keyword": "appl"
+     }
+   }
+ }'
+
+ curl -X POST localhost:9200/chapter7/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "term": {
+"product_name.keyword": "Red Gala Apple"
+     }
+   }
+ }'
+
+
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+  {
+    "query": {
+  "term": {
+        "product_name": "Women'\''s wool Jacket"
+      }
+    }
+  }'
+
+  curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+   {
+     "query": {
+   "match": {
+         "product_name": "Women'\''s wool Jacket"
+       }
+     }
+   }'
+
+   curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+    {
+      "query": {
+        "match": {
+          "product_name": {
+            "query": "Women'\''s wool Jacket",
+   "operator": "and"
+          }
+        }
+      }
+    }'
+```
+### Match Phrase
+```json
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "match_phrase": {
+ "description": "All season jacket"
+     }
+   }
+ }'
+```
+ ### if there is a word in between the terms
+ ### Match Phrase
+ ```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "match_phrase": {
+      "description": {
+        "query": "All season jacket",
+"slop": 1
+      }
+    }
+  }
+}'
+```
+### Prefix
+```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+  "query": {
+"prefix": {
+      "product_name": "ja"
+    }
+  }
+}'
+```
+
+### Match Phrase Prefix
+```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+  "query": {
+"match_phrase_prefix": {
+      "product_name": {
+"query": "Men'\''s High Pe",
+"max_expansions": 10
+      }
+    }
+  }
+}'
+```
+### Wildcard
+```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "wildcard" : {
+"product_name" : "j*e?"
+    }
+  }
+}'
+```
+
+### Regular Expression
+```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "regexp" : {
+"product_name" : "jacke."
+    }
+  }
+}'
+```
+
+### Exists
+```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "exists" : {
+      "field" : "reviews"
+    }
+  }
+}'
+```
+### Must not
+```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "bool": {
+"must_not": {
+        "exists": {
+          "field": "reviews"
+        }
+      }
+    }
+  }
+}'
+```
+###  Search example match
+```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+    "query": {
+ "bool": {
+        "must": [
+          {
+            "match": {
+              "product_name": "jacket"
+            }
+          },
+          {
+            "range": {
+              "unit_price": {
+                "lt": "70"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }'
+
+  curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+   {
+     "query": {
+       "bool": {
+  "should": [
+           {
+             "match": {
+               "product_name": {
+                 "query": "Water Resistant Jacket",
+                 "operator": "and"
+               }
+             }
+           },
+           {
+  "bool": {
+               "must": [
+                 {
+                   "match": {
+                     "product_name": {
+                       "query": "Performance Fleece",
+                       "operator": "and"
+                     }
+                   }
+                 },
+                 {
+                   "range": {
+                     "unit_price": {
+                       "lte": "100"
+                     }
+                   }
+                 }
+               ]
+             }
+           }
+         ]
+       }
+     }
+   }'
+```
+### Search with score
+```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "constant_score": {
+       "filter": {
+         "term" : {
+           "product_name" : "wool"
+         }
+       }
+     }
+   }
+ }'
+
+
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+  {
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "match": {
+              "product_name": "jacket"
+            }
+          },
+          {
+  "constant_score": {
+              "filter": {
+                "range": {
+                  "unit_price": {
+                    "lt": "100"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }'
+
+  curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+   {
+     "query": {
+   "function_score": {
+         "query": {
+           "match": {
+             "product_name" : "jacket"
+           }
+         },
+         "field_value_factor": {
+  "field": "reviews"
+         }
+       }
+     }
+   }'
+
+  curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "function_score": {
+       "query": {
+         "match": {
+           "product_name": {
+             "query": "jacket"
+           }
+         }
+       },
+       "field_value_factor": {
+         "field": "reviews",
+ "factor": "0.25"
+       }
+     }
+   }
+ }'
+
+
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+  "query": {
+    "function_score": {
+      "query": {
+        "match": {
+          "product_name": {
+            "query": "jacket"
+          }
+        }
+      },
+      "field_value_factor": {
+        "field": "reviews",
+ "modifier": "log1p"
+      }
+    }
+  }
+ }'
+```
+### Search bossting queries
+```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "bool": {
+"must": [
+         {
+           "match": {
+             "product_name": "jacket"
+           }
+         }
+       ],
+ "should": [
+ {
+      "range": {
+          "release_date": {
+            "gte": "now/y",
+            "boost": 1
+             }
+            }
+          },
+         {
+           "range": {
+             "unit_price": {
+               "lt": 100,
+               "boost": 0.5
+             }
+           }
+         },
+         {
+           "range": {
+             "reviews": {
+               "gte": 25,
+               "boost": 2
+             }
+           }
+         }
+       ]
+     }
+   }
+ }'
+
+
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+  {
+    "query": {
+      "function_score": {
+        "functions": [
+          {
+            "gauss": {
+              "release_date": {
+ "origin": "now",
+                "scale": "180d"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }'
+
+  curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+  {
+    "query": {
+  "function_score": {
+        "functions": [
+          {
+  "gauss": {
+              "unit_price": {
+                "origin": "50",
+                "scale": "15"
+              }
+            }
+          },
+          {
+  "gauss": {
+              "release_date": {
+                "origin": "now",
+                "scale": "180d"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }'
+
+curl -X  POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "function_score": {
+      "query": {
+        "match": {
+          "product_name": {
+            "query": "jacket"
+          }
+        }
+      },
+      "functions": [
+        {
+          "gauss": {
+"unit_price": {
+              "origin": "50",
+              "scale": "15"
+            }
+          },
+"weight": 1
+        },
+        {
+          "gauss": {
+"release_date": {
+              "origin": "now",
+              "scale": "180d"
+            }
+          },
+"weight": 2
+        }
+      ]
+    }
+  }
+}'
+
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "match": {
+       "product_name": {
+         "query": "jacket"
+       }
+     }
+   },
+   "rescore": {
+"window_size": 10,
+     "query": {
+       "rescore_query": {
+         "function_score": {
+           "script_score": {
+             "script": {
+ "inline": "Math.log(params['\''_source'\'']['\''reviews'\''])"
+             }
+           }
+         }
+       },
+ "query_weight": 0.5,
+       "rescore_query_weight": 1.0
+     }
+   }
+ }'
+```
+### Multi Match
+```json
+  curl -X GET localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+  {
+    "query": {
+      "multi_match": {
+ "query": "biking jacket",
+        "fields": [
+          "product_name",
+          "description"
+        ],
+ "type": "best_fields"
+      }
+    }
+  }'
+
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+{
+   "query": {
+     "multi_match": {
+       "query": "biking jacket",
+       "fields": [
+         "product_name",
+         "description"
+       ],
+ "tie_breaker": 0.2
+     }
+   }
+ }'
+
+ curl -X POST localhost:9200/chapter6/_search?pretty -H 'Content-Type: application/json' -d'
+ {
+   "explain": true,
+   "query": {
+     "multi_match": {
+       "query": "biking jacket",
+       "fields": [
+"product_name^2",
+         "description"
+       ]
+     }
+   }
+ }'
+
+ curl -X POST localhost:9200/chapter6/_search?pretty -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "multi_match": {
+       "query": "biking jacket",
+       "fields": [
+"product_name^2",
+         "description"
+       ]
+     }
+   }
+ }'
+```
+### Multi Match (Best Fields)
+```json
+curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "multi_match": {
+  "query": "jacket",
+       "fields": [
+         "product_name",
+         "description"
+       ],
+       "type": "best_fields",
+"analyzer" : "english"
+     }
+   }
+ }'
+```
+ ### Multi Match (Most Fields)
+ ```json
+ curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+  {
+    "query": {
+      "multi_match": {
+        "query": "jacket",
+        "fields": [
+          "product_name",
+          "description"
+        ],
+ "type": "most_fields",
+        "analyzer" : "english"
+      }
+    }
+  }'
+```
+### Combines product name and description, finds the term which occurs quickly
+```json
+  curl -X POST localhost:9200/chapter6/_search -H 'Content-Type: application/json' -d'
+   {
+     "query": {
+       "multi_match": {
+         "query": "jacket",
+         "fields": [
+           "product_name",
+           "description"
+         ],
+  "type": "cross_fields",
+         "analyzer" : "english"
+       }
+     }
+   }'
+```
+### Insert examples
+```json
+ curl -H 'Content-Type: application/json' -X PUT localhost:9200/chapter7/_doc/1 -d'
+   { "product_name": "Apple iPhone 7"}'
+
+  curl -H 'Content-Type: application/json' -X PUT localhost:9200/chapter7/_doc/2 -d'
+   { "product_name": "Apple iPhone Lightning Cable" }'
+
+  curl -H 'Content-Type: application/json' -X PUT localhost:9200/chapter7/_doc/3 -d'
+   { "product_name": "Apple iPhone 6"}'
+
+  curl -H 'Content-Type: application/json' -X PUT localhost:9200/chapter7/_doc/4 -d'
+   { "product_name": "Samsung Galaxy S7" }'
+
+  curl -H 'Content-Type: application/json' -X PUT localhost:9200/chapter7/_doc/5 -d'
+   { "product_name": "Samsung Galaxy S6" }'
+```
+### Highlighting
+```json
+curl -X POST localhost:9200/chapter7/_search -H 'Content-Type: application/json' -d'
+ {
+   "query": {
+     "match": {
+       "product_name": {
+"query": "samsung"
+
+       }
+     }
+   },
+"highlight": {
+         "fields" : {
+             "product_name" : {}
+         }
+     }
+ }'
+```
