@@ -51,6 +51,14 @@ curl -XGET 'http://elasticsearch:9200/_cluster/health?level=indices&pretty'
 ```
 curl -XGET 'http://elasticsearch:9200/_cluster/health?level=shards&pretty'
 ```
+### Detailed shard routing
+```
+curl `hostname -f`:9200/_cluster/state/routing_table?pretty
+```
+### Get ES settings with defaults
+```
+curl "localhost:9200/_cluster/settings?include_defaults=true&pretty"
+```
 ### Cache clear (In case you hit circuit breaker)
 ```
 circuit breaker
